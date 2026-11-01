@@ -1,6 +1,6 @@
 ---
 name: a-stock-data
-description: 当任务需要写代码实际获取A股及相关市场数据时使用——行情/K线/逐笔(腾讯日周月前后复权+分钟线+当日逐笔、通达信官网全市场盘后包、百度)、研报(东财+新浪+同花顺+iwencai)、信号(热点/北向/龙虎榜/解禁/行业/板块资金流)、资金面(融资融券/大宗/股东户数/分红/资金流/ETF份额)、新闻(财联社/东财/华尔街见闻/新闻联播)、财务三表/F10/估值历史/ST名单、公告(巨潮)、打板(涨停池/连板/炸板率/监控池/异动)、ETF期权、舆情互动(互动易/上证e互动/热榜)、筹码分布、复权因子、申万行业变迁、宏观与利率(社融/PMI/中债收益率曲线/回购定盘利率/LPR/全球宏观日历)、指数成分/权重/估值/交易日历、期货与大宗商品(五家期货交易所日行情/商品与股指期权/持仓排名/期货日K含大商所/实时期货/A50/上海金)、事件驱动(业绩预告/机构调研/增减持/回购/股权质押/新股申购)、可转债等真实数据。十五层·87端点(含5备胎)·34个来源·内嵌全部可运行代码，自包含零外部文件；优先用腾讯/交易所官方等不封IP源，东财接口已内置限流防封，主源被封可查「备用源速查」降级。仅在需要调用数据接口取数时使用：A股概念解释、投资观点讨论、策略问答等无需取数的话题不要加载本skill。
+description: 当任务需要写代码实际获取A股及相关市场数据时使用——行情/K线/逐笔(腾讯日周月前后复权+分钟线+当日逐笔、通达信官网全市场盘后包、百度)、研报(东财+新浪+同花顺+iwencai)、信号(热点/北向/龙虎榜/解禁/行业/板块资金流/板块历史Tushare优先)、资金面(融资融券/大宗/股东户数/分红/资金流/ETF份额)、新闻(财联社/东财/华尔街见闻/新闻联播)、财务三表/F10/估值历史/ST名单、公告(巨潮)、打板(涨停池/连板/炸板率/监控池/异动)、ETF期权、舆情互动(互动易/上证e互动/热榜)、筹码分布、复权因子、申万行业变迁、宏观与利率(社融/PMI/中债收益率曲线/回购定盘利率/LPR/全球宏观日历)、指数成分/权重/估值/交易日历、期货与大宗商品(五家期货交易所日行情/商品与股指期权/持仓排名/期货日K含大商所/实时期货/A50/上海金)、事件驱动(业绩预告/机构调研/增减持/回购/股权质押/新股申购)、可转债等真实数据。十五层·87端点(含5备胎)·34个来源·内嵌全部可运行代码，自包含零外部文件；优先用腾讯/交易所官方等不封IP源，东财接口已内置限流防封，主源被封可查「备用源速查」降级。仅在需要调用数据接口取数时使用：A股概念解释、投资观点讨论、策略问答等无需取数的话题不要加载本skill。
 origin: custom
 version: 3.10.3
 ---
@@ -10,6 +10,11 @@ version: 3.10.3
 > 作者：Simon 林 · X [@linsizhen](https://x.com/linsizhen) · 邮箱：simonlin0423@gmail.com
 
 # A股全栈数据工具包 V3.10.3
+
+> **SelfAiStation / RyanWu20 fork 本地补丁（相对上游 3.10.3）：**
+> - 恢复并并入旧版自用适配：**§3.11 板块历史（BK · Tushare Pro/tinyshare 优先，东财 push2his 降级）**；
+> - 上游 3.10.x 未再收录该批量回填路径；本 fork 保留以满足板块雷达/落盘需求。
+> - 其余端点与上游 3.10.3 对齐。
 
 十五层数据架构，87 个能力端点（82 主端点 + 5 备胎）、34 个来源。V3.10 新增的 2 个入口于 2026-09-22 实测，V3.9 新增的 25 个入口于 2026-09-20 实测；旧端点的验证日期见各章节。覆盖主板/创业板/科创板/ST，北交所覆盖依端点而异；已有备胎的数据可按「备用源速查」降级。
 
@@ -150,7 +155,8 @@ version: 3.10.3
 ├── 全市场龙虎榜   → 每日全市场上榜股票 + 净买额排名 (datacenter-web)
 ├── 限售解禁日历   → 历史解禁 + 未来90天待解禁 (datacenter-web)
 ├── 行业板块排名   → 东财行业涨跌/上涨下跌家数 (V3.0 替换同花顺)
-└── 板块资金流向   → 行业/概念/地域 × 今日/5日/10日 主力+超大/大/中/小四档 (push2, V3.5)
+├── 板块资金流向   → 行业/概念/地域 × 今日/5日/10日 主力+超大/大/中/小四档 (push2, V3.5)
+└── **Tushare Pro** → **板块历史批量（BK，30日回填优先 / 东财降级）** (fork §3.11)
 
 资金面 / 筹码层
 ├── 融资融券明细   → 日级融资余额/买入/偿还 + 融券 (datacenter-web)
@@ -264,6 +270,7 @@ ETF期权层 (V3.3 新增)
 | 3.7 | `industry_comparison()` | 行业板块涨跌排名 | 东财 |
 | 3.8 | `board_fund_flow(board_type, period)` | 板块资金流向（行业/概念/地域 × 今日/5日/10日，主力+四档） | 东财 |
 | 3.9 | `daily_dragon_tiger(date)` | 全市场龙虎榜+净买额排名 | 东财 |
+| 3.11 | `sync_board_history_auto` / `sync_board_history_tushare` / `sync_board_history_em` | 板块 BK 历史（Tushare 优先，东财降级） | Tushare/东财 |
 | 4.1 | `margin_trading(code)` | 融资融券明细 | 东财 |
 | 4.2 | `block_trade(code)` | 大宗交易+营业部 | 东财 |
 | 4.3 | `holder_num_change(code)` | 股东户数变化 | 东财 |
@@ -410,6 +417,7 @@ ETF期权层 (V3.3 新增)
 - 用户要看**全市场龙虎榜**（当日所有上榜股票 + 净买额排名）
 - 用户要看**限售解禁日历**（历史解禁 + 未来待解禁）
 - 用户要做**行业横向对比**（涨跌排名 / 资金流入 / 领涨股）
+- 用户要拉**东财概念/行业板块（BK）近 30 日历史**（资金流+K线；Tushare 批量优先）
 - 用户要看**融资融券 / 两融数据**（融资余额 + 融券余额）
 - 用户要看**大宗交易**（成交价/量 + 买卖方营业部）
 - 用户要看**股东户数变化**（筹码集中度）
@@ -422,7 +430,7 @@ ETF期权层 (V3.3 新增)
 - 用户要看新闻资讯（个股新闻 / 财联社快讯 / 全球资讯）
 - 用户要查公告（巨潮公告全文）
 - 用户要做产业链调研 / 批量横向对比
-- 关键词：估值、一致预期、机构预测、市盈率、PEG、市值、研报、产业链、行业研究、K线、盘口、公告、新闻、**强势股、题材、热点、概念归因、北向资金、沪股通、深股通、概念板块、资金流向、主力、龙虎榜、席位、营业部、全市场龙虎榜、净买入、解禁、限售、行业对比、行业轮动、融资融券、两融、大宗交易、股东户数、筹码集中、分红、派息、送股、指数、ETF、涨停、打板、连板、炸板、跌停、涨停原因、封板、晋级率、ETF期权、希腊字母、隐含波动率、互动易、投资者关系、热榜、人气榜、市场热度、期货、商品期权、股指期权、持仓排名、A50、黄金、上海金、业绩预告、机构调研、增减持、回购、股权质押、新股申购、打新、可转债、转股溢价率、国债收益率、收益率曲线、回购利率、FR007、LPR、宏观日历、ETF份额、ST、新闻联播、上证e互动、聚宽、回测**
+- 关键词：估值、一致预期、机构预测、市盈率、PEG、市值、研报、产业链、行业研究、K线、盘口、公告、新闻、**强势股、题材、热点、概念归因、北向资金、沪股通、深股通、概念板块、板块历史、BK板块、Tushare、tinyshare、资金流向、主力、龙虎榜、席位、营业部、全市场龙虎榜、净买入、解禁、限售、行业对比、行业轮动、融资融券、两融、大宗交易、股东户数、筹码集中、分红、派息、送股、指数、ETF、涨停、打板、连板、炸板、跌停、涨停原因、封板、晋级率、ETF期权、希腊字母、隐含波动率、互动易、投资者关系、热榜、人气榜、市场热度、期货、商品期权、股指期权、持仓排名、A50、黄金、上海金、业绩预告、机构调研、增减持、回购、股权质押、新股申购、打新、可转债、转股溢价率、国债收益率、收益率曲线、回购利率、FR007、LPR、宏观日历、ETF份额、ST、新闻联播、上证e互动、聚宽、回测**
 
 ---
 
@@ -442,6 +450,7 @@ pip install mootdx requests pandas stockstats numpy baostock xlrd openpyxl
 | baostock | >= 0.8 | §6.5/§6.6 估值历史·换手率·停牌·ST·退市日，§6.8 ST 名单兜底（TCP，免注册免 key；**不支持北交所**） |
 | xlrd | >= 2.0 | 读 `.xls`（§6.7 申万行业分类、§12 中证） |
 | openpyxl | any | 读 `.xlsx`（§11.1 社融、§12 国证、深交所两融） |
+| tinyshare | latest | **可选** Tushare Pro 代理（§3.11 板块历史批量）；`pip install tinyshare --extra-index-url https://minidoc.pages.dev/simple/ -U` |
 
 > **架构：** 除 mootdx 与 baostock（均为 TCP 客户端库）外，所有数据源均为直连 HTTP API，不经第三方数据封装。每个 HTTP 端点的底层 URL/参数完全暴露，方便调试和定制。
 
@@ -456,7 +465,76 @@ export IWENCAI_BASE_URL="https://openapi.iwencai.com"
 # 注册后安装 SkillHub CLI，再安装 report-search 技能即可获得 Key
 ```
 
-其他数据源（腾讯 / 东财 / 同花顺 / 百度股市通 / 新浪 / 巨潮 / 财联社 / mootdx / baostock / 申万 / 人民银行 / 国家统计局 / 沪深北交易所 / 中证 / 国证 / 通达信官网 / 华尔街见闻 / 央视网 / 中债 / 中国货币网 / 五家期货交易所 / 上金所）全部免费，无需 key。
+其他数据源（腾讯 / 东财 / 同花顺 / 百度股市通 / 新浪 / 巨潮 / 财联社 / mootdx / baostock / 申万 / 人民银行 / 国家统计局 / 沪深北交易所 / 中证 / 国证 / 通达信官网 / 华尔街见闻 / 央视网 / 中债 / 中国货币网 / 五家期货交易所 / 上金所）全部免费，无需 key。板块历史批量另见上方 **Tushare / tinyshare（可选）**。
+
+### Tushare Pro / tinyshare（板块历史批量，可选）
+
+**适用：** 东财概念/行业板块（BK）**近 30 个交易日**资金流 + 日 K **批量回填**。按**交易日**拉全市场（约 `days×2` 次 API），远快于东财 push2his 逐板块（780+ 板块 × N 日）。
+
+**典型购买：** 1 万积分 / **7 天有效期** → **第 1 天 Tushare 回填 30 日**，第 2 天起用东财免费增量（见 §3.11）。
+
+```bash
+# 项目根目录 .env（勿提交 git）
+TUSHARE_TOKEN=你的tinyshare授权码
+
+# 或 export
+export TUSHARE_TOKEN='你的授权码'
+
+pip install tinyshare --extra-index-url https://minidoc.pages.dev/simple/ -U
+```
+
+```python
+import os
+import time
+from pathlib import Path
+from typing import Any
+
+def load_dotenv(path: str | None = None) -> None:
+    """加载 .env（不覆盖已有环境变量）。"""
+    env_path = Path(path or ".env")
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        key, val = key.strip(), val.strip().strip("'\"")
+        if key and key not in os.environ:
+            os.environ[key] = val
+
+def get_tushare_pro():
+    """获取 Tushare Pro 客户端；无 token / 未安装 tinyshare 时抛 RuntimeError → 触发东财降级。"""
+    load_dotenv()
+    token = os.environ.get("TUSHARE_TOKEN", "").strip()
+    if not token:
+        raise RuntimeError("未设置 TUSHARE_TOKEN")
+    try:
+        import tinyshare as ts
+    except ImportError as exc:
+        raise RuntimeError(
+            "请安装 tinyshare: pip install tinyshare "
+            "--extra-index-url https://minidoc.pages.dev/simple/ -U"
+        ) from exc
+    ts.set_token(token)
+    return ts.pro_api()
+
+def tushare_available() -> bool:
+    try:
+        get_tushare_pro()
+        return True
+    except RuntimeError:
+        return False
+```
+
+| 接口 | 用途 | 字段映射 |
+|------|------|---------|
+| `moneyflow_ind_dc` | 板块日资金流 | `net_amount/1e8`→亿元 `Amount_Raw_BN`，`net_amount_rate/100`→占比小数 `Ratio_Raw_Pct` |
+| `dc_daily` | 板块日 K | `vol`→volume，`open/high/low/close/amount` |
+| `dc_index` | 板块领涨股 | `leading`→lead_stock，`leading_pct`→pct_change_stock |
+| `trade_cal` | 交易日历 | 取最近 N 个 `is_open=1` 日 |
+
+> **失效时：** 捕获 `RuntimeError` / API 异常 / 积分过期 → 改用 §3.10 **东财 push2his 降级**，不要无 token 时反复重试 Tushare。
 
 ### mootdx 客户端（必读，规避 0.11.x BESTIP 空串 bug）
 
@@ -3006,6 +3084,291 @@ print("\n行业涨幅 TOP 5:")
 for r in comp["top"][:5]:
     print(f"  {r['name']}: {r['change_pct']}% 涨{r['up_count']}跌{r['down_count']}")
 ```
+
+---
+
+
+### 3.11 板块历史（BK 概念/行业 · Tushare 优先，东财降级）
+
+**场景：** 板块资金流雷达、波段 Swing、近 30 日 `Amount_Raw_BN` / `Ratio_Raw_Pct` / `volume` 历史。
+
+**优先级（AI 必遵）：**
+
+| 模式 | 首选 | 降级 |
+|------|------|------|
+| 首次回填 / 本地 <25 日 | Tushare 按日批量（需 `TUSHARE_TOKEN`） | 东财 push2his 逐板块全量（慢，易断连） |
+| 日常增量 | 东财 push2his 仅拉本地最新日之后 | — |
+| 7 天积分期内可选 | Tushare `--incremental` 补新交易日 | 东财增量 |
+
+```python
+import time
+from typing import Any
+
+# ── 东财 push2his 板块历史（降级 / 日常增量）────────────────────────────
+PUSH2HIS_HOSTS = [
+    "https://push2his.eastmoney.com",
+    "https://82.push2his.eastmoney.com",
+]
+EM_UT = "b2884a393a59ad64002292a3e90d46a5"
+QUOTE_REFERER = {
+    "Referer": "https://quote.eastmoney.com/",
+    "Origin": "https://quote.eastmoney.com",
+}
+
+def board_secid(board_code: str) -> str:
+    code = board_code.upper()
+    if not code.startswith("BK"):
+        code = f"BK{code}"
+    return f"90.{code}"
+
+def em_get_push2his(path: str, params: dict, min_klines: int = 0):
+    """push2his 多 host 轮询；条数不足时换 host 重试。"""
+    params = {"ut": EM_UT, **params}
+    last_err = None
+    for host in PUSH2HIS_HOSTS:
+        for attempt in range(3):
+            try:
+                r = em_get(f"{host}{path}", params=params, headers=QUOTE_REFERER, timeout=20)
+                if min_klines > 0:
+                    klines = (r.json().get("data") or {}).get("klines") or []
+                    if len(klines) < min_klines:
+                        raise RuntimeError(f"{host} 仅 {len(klines)} 条，需要 ≥{min_klines}")
+                return r
+            except Exception as exc:
+                last_err = exc
+                time.sleep(1.5 * (attempt + 1))
+    raise last_err
+
+def fetch_board_fund_flow_history(board_code: str, limit: int = 30) -> list[dict]:
+    """东财板块日级资金流（push2his fflow/daykline，secid=90.BKxxxx）。"""
+    params = {
+        "secid": board_secid(board_code),
+        "lmt": limit,
+        "klt": 101,
+        "fields1": "f1,f2,f3,f7",
+        "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65",
+    }
+    r = em_get_push2his("/api/qt/stock/fflow/daykline/get", params, min_klines=min(limit, 5))
+    rows = []
+    for line in r.json().get("data", {}).get("klines") or []:
+        p = line.split(",")
+        if len(p) < 7:
+            continue
+        rows.append({
+            "trade_date": p[0],
+            "Amount_Raw_BN": float(p[1]) / 1e8,
+            "Ratio_Raw_Pct": float(p[6]) / 100.0,
+            "pct_change": float(p[12]) if len(p) > 12 else 0.0,
+            "close": float(p[11]) if len(p) > 11 else None,
+        })
+    return rows
+
+def fetch_board_kline_history(board_code: str, limit: int = 30) -> list[dict]:
+    """东财板块日 K（push2his stock/kline）。"""
+    params = {
+        "secid": board_secid(board_code),
+        "klt": 101, "fqt": 0, "end": "20500101", "lmt": limit,
+        "fields1": "f1,f2,f3,f4,f5,f6",
+        "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61",
+    }
+    r = em_get_push2his("/api/qt/stock/kline/get", params, min_klines=min(limit, 5))
+    rows = []
+    for line in r.json().get("data", {}).get("klines") or []:
+        p = line.split(",")
+        if len(p) < 8:
+            continue
+        rows.append({
+            "trade_date": p[0],
+            "open": float(p[1]), "close": float(p[2]),
+            "high": float(p[3]), "low": float(p[4]),
+            "volume": float(p[5]), "amount": float(p[6]),
+            "pct_change": float(p[8]) if len(p) > 8 else None,
+        })
+    return rows
+
+def fetch_board_list(fs: str) -> list[dict]:
+    """板块列表。fs: 概念 `m:90+t:3+f:!50` ，行业 `m:90+t:2`"""
+    url = "https://push2.eastmoney.com/api/qt/clist/get"
+    params = {"pn": 1, "pz": 5000, "po": 1, "np": 1, "fltt": 2, "invt": 2,
+              "fs": fs, "fields": "f12,f14,f3,f62,f184"}
+    r = em_get(url, params=params, headers={"Referer": "https://data.eastmoney.com/"})
+    diff = r.json().get("data", {}).get("diff") or []
+    if not isinstance(diff, list):
+        diff = list(diff.values())
+    return [{"code": x["f12"], "name": x.get("f14", ""), "change_pct": x.get("f3")} for x in diff]
+
+# ── Tushare 按日批量（优先）────────────────────────────────────────────
+def _fmt_date(d: str) -> str:
+    d = str(d).strip()
+    return f"{d[:4]}-{d[4:6]}-{d[6:8]}" if len(d) == 8 and d.isdigit() else d
+
+def _safe_float(v: Any, default: float = 0.0) -> float:
+    try:
+        return default if v in (None, "", "-") else float(v)
+    except (TypeError, ValueError):
+        return default
+
+def tushare_recent_trade_dates(pro, days: int) -> list[str]:
+    end = time.strftime("%Y%m%d")
+    start = str(int(end) - days * 3)
+    cal = pro.trade_cal(exchange="SSE", start_date=start, end_date=end,
+                        is_open="1", fields="cal_date")
+    if cal is None or cal.empty:
+        return []
+    return [_fmt_date(d) for d in cal["cal_date"].tolist()][-days:]
+
+def tushare_fetch_daily_flow(pro, trade_date: str) -> list[dict]:
+    td = trade_date.replace("-", "")
+    df = pro.moneyflow_ind_dc(
+        trade_date=td,
+        fields="trade_date,ts_code,name,pct_change,close,net_amount,net_amount_rate",
+    )
+    if df is None or df.empty:
+        return []
+    rows = []
+    for _, r in df.iterrows():
+        code = str(r["ts_code"]).split(".")[0].upper()
+        rows.append({
+            "trade_date": _fmt_date(r["trade_date"]),
+            "code": code, "name": str(r.get("name") or code),
+            "Amount_Raw_BN": _safe_float(r.get("net_amount")) / 1e8,
+            "Ratio_Raw_Pct": _safe_float(r.get("net_amount_rate")) / 100.0,
+            "pct_change": _safe_float(r.get("pct_change")),
+            "close": _safe_float(r.get("close"), default=None),
+        })
+    return rows
+
+def tushare_fetch_daily_kline(pro, trade_date: str) -> dict[str, dict]:
+    td = trade_date.replace("-", "")
+    df = pro.dc_daily(trade_date=td,
+        fields="trade_date,ts_code,open,close,high,low,vol,amount,pct_change")
+    if df is None or df.empty:
+        return {}
+    out = {}
+    for _, r in df.iterrows():
+        code = str(r["ts_code"]).split(".")[0].upper()
+        out[code] = {
+            "trade_date": _fmt_date(r["trade_date"]),
+            "open": _safe_float(r.get("open"), default=None),
+            "close": _safe_float(r.get("close"), default=None),
+            "high": _safe_float(r.get("high"), default=None),
+            "low": _safe_float(r.get("low"), default=None),
+            "volume": _safe_float(r.get("vol"), default=None),
+            "amount": _safe_float(r.get("amount"), default=None),
+            "pct_change": _safe_float(r.get("pct_change")),
+        }
+    return out
+
+def tushare_fetch_daily_index(pro, trade_date: str) -> dict[str, dict]:
+    td = trade_date.replace("-", "")
+    df = pro.dc_index(trade_date=td,
+        fields="trade_date,ts_code,leading,leading_pct,pct_change")
+    if df is None or df.empty:
+        return {}
+    out = {}
+    for _, r in df.iterrows():
+        code = str(r["ts_code"]).split(".")[0].upper()
+        out[code] = {
+            "lead_stock": str(r.get("leading") or ""),
+            "pct_change_stock": _safe_float(r.get("leading_pct")),
+            "pct_change": _safe_float(r.get("pct_change")),
+        }
+    return out
+
+def sync_board_history_tushare(days: int = 30, incremental: bool = False) -> dict[str, list[dict]]:
+    """
+    Tushare 批量同步板块历史（优先路径）。
+    返回 {BK代码: [{trade_date, Amount_Raw_BN, Ratio_Raw_Pct, volume, ...}, ...]}
+    """
+    pro = get_tushare_pro()
+    dates = tushare_recent_trade_dates(pro, days)
+    store: dict[str, list[dict]] = {}
+    for i, td in enumerate(dates, 1):
+        flows = tushare_fetch_daily_flow(pro, td)
+        klines = tushare_fetch_daily_kline(pro, td)
+        index = tushare_fetch_daily_index(pro, td)
+        for row in flows:
+            code = row["code"]
+            rec = {**row, **klines.get(code, {}), **index.get(code, {})}
+            store.setdefault(code, []).append(rec)
+        print(f"  Tushare [{i}/{len(dates)}] {td} 板块 {len(flows)}")
+        time.sleep(0.35)  # 礼貌限速
+    for code in store:
+        store[code].sort(key=lambda x: x["trade_date"])
+    return store
+
+def sync_board_history_em(board_codes: list[str], limit: int = 30,
+                          incremental_after: str | None = None) -> dict[str, list[dict]]:
+    """
+    东财降级：逐板块 push2his。
+    incremental_after: 若给定 YYYY-MM-DD，只保留该日之后的新数据。
+    """
+    store: dict[str, list[dict]] = {}
+    for i, code in enumerate(board_codes, 1):
+        try:
+            flows = fetch_board_fund_flow_history(code, limit=limit)
+            klines = {r["trade_date"]: r for r in fetch_board_kline_history(code, limit=limit)}
+            merged = []
+            for f in flows:
+                if incremental_after and f["trade_date"] <= incremental_after:
+                    continue
+                rec = {**f, **klines.get(f["trade_date"], {})}
+                merged.append(rec)
+            store[code] = merged
+            if i % 20 == 0 or i == len(board_codes):
+                print(f"  东财 [{i}/{len(board_codes)}] {code} {len(merged)}日")
+        except Exception as exc:
+            print(f"  [WARN] {code}: {exc}")
+    return store
+
+def sync_board_history_auto(board_codes: list[str], days: int = 30,
+                            local_median_days: int = 0) -> dict[str, list[dict]]:
+    """
+    混合同步入口：Tushare 优先，失效降级东财。
+    local_median_days: 本地已有历史中位数；<25 触发 backfill，否则东财增量。
+    """
+    need_backfill = local_median_days < 25
+    if need_backfill and tushare_available():
+        try:
+            print("模式: Tushare 批量回填")
+            return sync_board_history_tushare(days=days, incremental=False)
+        except Exception as exc:
+            print(f"[WARN] Tushare 失败 ({exc})，降级东财 push2his")
+    elif need_backfill:
+        print("模式: 东财 push2his 全量（无 TUSHARE_TOKEN）")
+    else:
+        print("模式: 东财 push2his 增量")
+    return sync_board_history_em(board_codes, limit=days)
+```
+
+```python
+# 用法示例
+concept_boards = fetch_board_list("m:90+t:3+f:!50")
+industry_boards = fetch_board_list("m:90+t:2")
+all_codes = [b["code"] for b in concept_boards + industry_boards]
+print(f"板块共 {len(all_codes)} 个")
+
+# 首次 / 重建：Tushare 优先（需 TUSHARE_TOKEN）
+if tushare_available():
+    history = sync_board_history_tushare(days=30)
+else:
+    history = sync_board_history_em(all_codes[:50], limit=30)  # 全量较慢，可先抽样
+
+# 日常：东财免费增量
+# history = sync_board_history_em(all_codes, limit=15, incremental_after="2026-06-01")
+
+# 查看某板块
+bk = "BK0475"
+for row in sorted(history.get(bk, []), key=lambda x: x["trade_date"])[-5:]:
+    print(row["trade_date"], row.get("Amount_Raw_BN"), row.get("Ratio_Raw_Pct"), row.get("volume"))
+```
+
+**注意：**
+- push2his **禁止**降级到 push2delay（历史常只返回 1 日）。
+- 东财全量 780 板块 × 30 日易断连；**有积分时务必先用 Tushare 回填**。
+- 字段口径：`Amount_Raw_BN` 亿元、`Ratio_Raw_Pct` 小数（0.05=5%），与 push2 当日快照一致。
+
+---
 
 ---
 
@@ -7608,7 +7971,17 @@ A: **不是！** 43=振幅%，46=PB。网上很多教程写错了，这里是实
 A: `size` 参数默认 10，调到 50。隐藏参数，文档未写明但实测可用。
 
 ### Q: 哪些数据源需要 API Key？
-A: 只有 iwencai 需要。其余 33 个来源（腾讯 / 东财 / 同花顺 / 新浪 / 巨潮 / 财联社 / 交易所与期货交易所 / 中债 / 货币网等）全部免费无 key。
+A: **iwencai** 需要 Key（语义搜索）。**Tushare / tinyshare** 需要 `TUSHARE_TOKEN`（可选，仅 §3.11 板块 30 日批量回填；无 token 时自动走东财 push2his）。其余来源免费无 key。
+
+
+### Q: Tushare 积分过期后怎么办？
+A: 日常更新改走 §3.11 **东财 push2his 增量**（`incremental_after=本地最新日`），无需 token。全量 30 日回填在无积分时只能东财逐板块拉，慢且易断连——建议下次有积分时再用 Tushare 重建。
+
+### Q: 板块历史为什么 Tushare 优先而不是东财？
+A: 东财 push2his 按**板块**请求（780+ 次/日 × 30 日），全量回填易触发限流/断连；Tushare `moneyflow_ind_dc` + `dc_daily` 按**交易日**拉全市场（约 60 次/30 日），更稳更快。东财仍是**当日快照、板块列表、积分过期后的免费增量**首选。
+
+### Q: push2his 只返回 1 条 K 线？
+A: 常见原因是误用了 **push2delay** 域名。板块/个股历史必须用 `push2his.eastmoney.com`（见 §3.11 `PUSH2HIS_HOSTS`），并检查 `min_klines` 拒绝降级响应。
 
 ### Q: 同花顺热点接口需要 cookie 吗？
 A: **不需要**。仅 User-Agent 即可，零鉴权 73ms 拿到 ~125 只当日强势股。但**不要去打 search.10jqka.com.cn 的 iwencai NL 选股接口** —— 那个有 hexin-v cookie JS 签名鉴权，跟热点接口完全两码事。
@@ -7641,11 +8014,16 @@ cp SKILL.md ~/.claude/skills/a-stock-data/SKILL.md
 
 # 3. 安装 Python 依赖
 pip install mootdx requests pandas stockstats numpy baostock xlrd openpyxl
+# 板块历史批量（可选，§3.11）
+pip install tinyshare --extra-index-url https://minidoc.pages.dev/simple/ -U
 
 # 4. (可选) 配置 iwencai API Key
 export IWENCAI_API_KEY="your_key_here"
 
-# 5. 启动 Claude Code，说"查一下688017的估值"即可自动激活
+# 5. (可选) 配置 Tushare / tinyshare — 板块 30 日批量回填
+export TUSHARE_TOKEN='你的授权码'
+
+# 6. 启动 Claude Code，说"查一下688017的估值"即可自动激活
 ```
 
 ---
