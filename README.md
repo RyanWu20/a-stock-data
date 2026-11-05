@@ -36,6 +36,9 @@
 
 一个自包含的 Skill 文件，把分散在 34 个数据源里的 A 股及相关市场原始数据整合成 AI 编程助手直接能用的工具集。你不用再背腾讯 K 线的分段参数、通达信盘后包的二进制格式、东财的 PDF Referer 头、iwencai 的 X-Claw 鉴权——全部封装好了。主源被封还有「备用源速查」可降级。
 
+> **本仓库（RyanWu20 fork）相对上游额外提供：** [`SKILL.md`](SKILL.md) 内 **Tushare 日级优先层**（Prerequisites）+ **§3.11 板块 BK 历史**。Token 见 [`.env.example`](.env.example)。  
+> **SelfAiStation 嵌套使用时：** Python 只用父仓 conda **`selfaistation`**（根目录 `environment.yml` 已含本 Skill 依赖与 tinyshare），不要另建 `a-stock-data` conda / venv。
+
 > 兼容 [Claude Code](https://github.com/anthropics/claude-code) · [Codex](https://github.com/openai/codex) · [OpenClaw](https://github.com/openclaw/openclaw) · [WorkBuddy](https://www.workbuddy.cn/) · [Muse](https://muse.ai/) · [Grok Bot](https://x.ai/bot)
 >
 > Skill 文件本质是结构化 Markdown + 内嵌 Python，任何支持上下文注入的 AI 编程助手都能用。

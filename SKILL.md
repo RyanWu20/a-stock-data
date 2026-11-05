@@ -12,8 +12,9 @@ version: 3.10.3
 # A股全栈数据工具包 V3.10.3
 
 > **SelfAiStation / RyanWu20 fork 本地补丁（相对上游 3.10.3）：**
-> - 恢复并并入旧版自用适配：**§3.11 板块历史（BK · Tushare Pro/tinyshare 优先，东财 push2his 降级）**；
-> - 上游 3.10.x 未再收录该批量回填路径；本 fork 保留以满足板块雷达/落盘需求。
+> - **Prerequisites「Tushare 优先层」**：日级/批量（K 线、估值、资金流、龙虎榜、两融、财务等）有 token 时先 Tushare，失败再回本文件对应 §；实时盘口/分钟/新闻/公告等仍直接各层 HTTP（自 Cursor 方案 B 并入，无独立文件）。
+> - **§3.11 板块历史**：BK 近 30 日 Tushare 批量 + 东财 push2his 降级（上游 3.10.x 未收录）。
+> - **Python 环境（本站）**：只用父仓 conda **`selfaistation`**（`SelfAiStation/environment.yml` 已含本 Skill Prerequisites + tinyshare）；**禁止**另建 `a-stock-data` conda / 子模块 venv。执行：`conda run -n selfaistation python …`。
 > - 其余端点与上游 3.10.3 对齐。
 
 十五层数据架构，87 个能力端点（82 主端点 + 5 备胎）、34 个来源。V3.10 新增的 2 个入口于 2026-09-22 实测，V3.9 新增的 25 个入口于 2026-09-20 实测；旧端点的验证日期见各章节。覆盖主板/创业板/科创板/ST，北交所覆盖依端点而异；已有备胎的数据可按「备用源速查」降级。
@@ -436,8 +437,31 @@ ETF期权层 (V3.3 新增)
 
 ## Prerequisites
 
+### SelfAiStation / Hana（本站默认）
+
+依赖已收进父仓唯一 conda 环境 **`selfaistation`**，**不要**再创建名为 `a-stock-data` 的 conda 环境，也不要在本目录 `pip install` / venv：
+
+```bash
+# 在 SelfAiStation 仓库根目录
+conda env update -f environment.yml --prune
+conda activate selfaistation
+# 或一次性：
+conda run -n selfaistation python -c "import mootdx,pandas,baostock,tinyshare; print('ok')"
+```
+
+跑本 Skill 内嵌代码时一律：
+
+```bash
+conda run -n selfaistation python …
+```
+
+`TUSHARE_TOKEN` 放本仓 `.env`（见 `.env.example`）或 Hana secrets / 环境变量，勿提交 git。
+
+### 独立使用本 Skill（非本站）时再手动装依赖
+
 ```bash
 pip install mootdx requests pandas stockstats numpy baostock xlrd openpyxl
+pip install tinyshare --extra-index-url https://minidoc.pages.dev/simple/ -U
 ```
 
 | 依赖 | 版本要求 | 用途 |
@@ -450,7 +474,7 @@ pip install mootdx requests pandas stockstats numpy baostock xlrd openpyxl
 | baostock | >= 0.8 | §6.5/§6.6 估值历史·换手率·停牌·ST·退市日，§6.8 ST 名单兜底（TCP，免注册免 key；**不支持北交所**） |
 | xlrd | >= 2.0 | 读 `.xls`（§6.7 申万行业分类、§12 中证） |
 | openpyxl | any | 读 `.xlsx`（§11.1 社融、§12 国证、深交所两融） |
-| tinyshare | latest | **可选** Tushare Pro 代理（§3.11 板块历史批量）；`pip install tinyshare --extra-index-url https://minidoc.pages.dev/simple/ -U` |
+| tinyshare | latest | Tushare Pro 代理（日级优先层 + §3.11）；本站已由 `environment.yml` 安装 |
 
 > **架构：** 除 mootdx 与 baostock（均为 TCP 客户端库）外，所有数据源均为直连 HTTP API，不经第三方数据封装。每个 HTTP 端点的底层 URL/参数完全暴露，方便调试和定制。
 
@@ -467,27 +491,55 @@ export IWENCAI_BASE_URL="https://openapi.iwencai.com"
 
 其他数据源（腾讯 / 东财 / 同花顺 / 百度股市通 / 新浪 / 巨潮 / 财联社 / mootdx / baostock / 申万 / 人民银行 / 国家统计局 / 沪深北交易所 / 中证 / 国证 / 通达信官网 / 华尔街见闻 / 央视网 / 中债 / 中国货币网 / 五家期货交易所 / 上金所）全部免费，无需 key。板块历史批量另见上方 **Tushare / tinyshare（可选）**。
 
-### Tushare Pro / tinyshare（板块历史批量，可选）
+### Tushare Pro / tinyshare（可选 · 日级优先层 + 板块历史）
 
-**适用：** 东财概念/行业板块（BK）**近 30 个交易日**资金流 + 日 K **批量回填**。按**交易日**拉全市场（约 `days×2` 次 API），远快于东财 push2his 逐板块（780+ 板块 × N 日）。
+有 `TUSHARE_TOKEN` 时，**日级 / 批量 / 历史**先走下方 Tushare 函数；失败或无 token → 本文件对应 §（腾讯/东财/同花顺/mootdx）。  
+**实时盘口、分钟资金流、热点 reason、新闻、公告全文、iwencai NL** → 直接各层，不强行 Tushare。  
+**板块 BK 近 30 日回填（含东财降级全文）** → **§3.11**。
 
-**典型购买：** 1 万积分 / **7 天有效期** → **第 1 天 Tushare 回填 30 日**，第 2 天起用东财免费增量（见 §3.11）。
+```
+取数
+  ├─ 日级批量 → 本节 Tushare → 失败则对应 §
+  ├─ 板块 30 日历史 → §3.11（Tushare 优先 / 东财增量）
+  └─ 实时 / 分钟 / 新闻 / 公告 / NL → 直接对应 §
+```
+
+**典型积分：** 1 万 / **7 天** → 第 1 天 Tushare 回填板块 30 日，第 2 天起东财免费增量（§3.11）。
 
 ```bash
-# 项目根目录 .env（勿提交 git）
+# 项目根目录 .env（见 .env.example；勿提交 git）
 TUSHARE_TOKEN=你的tinyshare授权码
-
-# 或 export
-export TUSHARE_TOKEN='你的授权码'
-
-pip install tinyshare --extra-index-url https://minidoc.pages.dev/simple/ -U
+# 或：export TUSHARE_TOKEN='你的授权码'
+# 本站：tinyshare 已在 conda selfaistation；独立使用才需：
+# pip install tinyshare --extra-index-url https://minidoc.pages.dev/simple/ -U
 ```
+
+#### 优先级总表
+
+| 场景 | 降级章节 | **Tushare 优先** |
+|------|----------|------------------|
+| 历史日 K | §1 腾讯 K / 通达信盘后包 | `ts_daily_bars` ← `daily` |
+| PE/PB/市值/换手 | §1 腾讯 | `ts_daily_basic` ← `daily_basic` |
+| 研报盈利预测 | §2 东财 / iwencai | `ts_report_forecast` ← `report_rc` |
+| 北向资金 | §3.2 同花顺 | `ts_northbound_flow` ← `moneyflow_hsgt` |
+| 个股日级资金流 | §3 / §4 push2his | `ts_stock_moneyflow` ← `moneyflow` |
+| 龙虎榜 | §3.5 / §3.9 | `ts_dragon_tiger` ← `top_list` |
+| 限售解禁 | §3.6 | `ts_share_float` ← `share_float` |
+| 板块当日 / 30 日历史 | §3.7 / **§3.11** | `dc_index` / §3.11 批量 |
+| 融资融券 | §4.1 | `ts_margin_detail` ← `margin_detail` |
+| 大宗交易 | §4.2 | `ts_block_trade` ← `block_trade` |
+| 股东户数 | §4.3 | `ts_holder_num` ← `stk_holdernumber` |
+| 分红送转 | §4.4 | `ts_dividend` ← `dividend` |
+| 财报三表 / 财务指标 | §6 | `ts_financials` / `fina_indicator` |
+| 热点 reason / 分钟 push2 / 新闻 / 公告 / NL | 对应 § | —（无 TS 或不用） |
+
+#### 客户端与公共 helper
 
 ```python
 import os
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 def load_dotenv(path: str | None = None) -> None:
     """加载 .env（不覆盖已有环境变量）。"""
@@ -504,7 +556,7 @@ def load_dotenv(path: str | None = None) -> None:
             os.environ[key] = val
 
 def get_tushare_pro():
-    """获取 Tushare Pro 客户端；无 token / 未安装 tinyshare 时抛 RuntimeError → 触发东财降级。"""
+    """无 token / 未安装 tinyshare 时抛 RuntimeError → 触发各 § 降级。"""
     load_dotenv()
     token = os.environ.get("TUSHARE_TOKEN", "").strip()
     if not token:
@@ -525,7 +577,266 @@ def tushare_available() -> bool:
         return True
     except RuntimeError:
         return False
+
+def _fmt_date(d: str) -> str:
+    d = str(d).strip()
+    return f"{d[:4]}-{d[4:6]}-{d[6:8]}" if len(d) == 8 and d.isdigit() else d
+
+def _safe_float(v: Any, default: float = 0.0) -> float:
+    try:
+        return default if v in (None, "", "-") else float(v)
+    except (TypeError, ValueError):
+        return default
+
+def to_ts_code(code: str) -> str:
+    """6 位代码 → ts_code（600519 → 600519.SH）。"""
+    c = str(code).strip().upper().split(".")[0][-6:].zfill(6)
+    suffix = "SH" if c.startswith(("6", "9")) else ("BJ" if c.startswith("8") else "SZ")
+    return f"{c}.{suffix}"
+
+def ts_or_none(fn: Callable, *args, **kwargs):
+    """Tushare 调用；任何异常返回 None（触发对应 § 降级）。"""
+    try:
+        pro = get_tushare_pro()
+        return fn(pro, *args, **kwargs)
+    except Exception as exc:
+        print(f"[tushare fallback] {getattr(fn, '__name__', fn)}: {exc}")
+        return None
+
+def tushare_recent_trade_dates(pro, days: int, end_date: str | None = None) -> list[str]:
+    end = (end_date or time.strftime("%Y%m%d")).replace("-", "")
+    start = str(int(end) - days * 3)
+    cal = pro.trade_cal(exchange="SSE", start_date=start, end_date=end,
+                        is_open="1", fields="cal_date")
+    if cal is None or cal.empty:
+        return []
+    return [_fmt_date(d) for d in cal["cal_date"].tolist()][-days:]
+
+def fetch_with_tushare_first(name: str, ts_fn, fallback_hint: str):
+    """ts_fn 无参；成功返回数据，否则打印降级提示并返回 None。"""
+    if tushare_available():
+        data = ts_fn()
+        if data is not None:
+            print(f"[source=tushare] {name}")
+            return data
+    print(f"[source=skill] {name} → 见 {fallback_hint}")
+    return None
 ```
+
+#### 日级接口（Tushare 优先）
+
+```python
+def ts_daily_bars(code: str, start_date: str, end_date: str) -> list[dict] | None:
+    def _fetch(pro):
+        df = pro.daily(ts_code=to_ts_code(code), start_date=start_date.replace("-", ""),
+                       end_date=end_date.replace("-", ""),
+                       fields="trade_date,open,high,low,close,vol,amount,pct_chg")
+        if df is None or df.empty:
+            return []
+        rows = []
+        for _, r in df.sort_values("trade_date").iterrows():
+            rows.append({
+                "date": _fmt_date(r["trade_date"]),
+                "open": _safe_float(r["open"]), "high": _safe_float(r["high"]),
+                "low": _safe_float(r["low"]), "close": _safe_float(r["close"]),
+                "volume": _safe_float(r["vol"]), "amount": _safe_float(r["amount"]),
+                "pct_change": _safe_float(r["pct_chg"]),
+            })
+        return rows
+    return ts_or_none(_fetch)
+# 降级：§1 腾讯 K 线 / 通达信盘后包
+
+def ts_daily_basic(code: str, trade_date: str | None = None) -> dict | None:
+    def _fetch(pro):
+        td = (trade_date or time.strftime("%Y%m%d")).replace("-", "")
+        df = pro.daily_basic(ts_code=to_ts_code(code), trade_date=td,
+            fields="trade_date,close,turnover_rate,pe_ttm,pb,total_mv,circ_mv")
+        if df is None or df.empty:
+            return None
+        r = df.iloc[0]
+        return {
+            "date": _fmt_date(r["trade_date"]),
+            "close": _safe_float(r["close"]),
+            "turnover_rate": _safe_float(r["turnover_rate"]),
+            "pe_ttm": _safe_float(r["pe_ttm"]),
+            "pb": _safe_float(r["pb"]),
+            "total_mv": _safe_float(r["total_mv"]) / 1e4,
+            "circ_mv": _safe_float(r["circ_mv"]) / 1e4,
+        }
+    return ts_or_none(_fetch)
+# 降级：§1 腾讯财经
+
+def ts_report_forecast(code: str, limit: int = 20) -> list[dict] | None:
+    def _fetch(pro):
+        df = pro.report_rc(ts_code=to_ts_code(code), fields="report_date,org_name,quarter,eps,pe,rating")
+        if df is None or df.empty:
+            return []
+        return [{
+            "date": _fmt_date(r.get("report_date", "")),
+            "org": str(r.get("org_name", "")),
+            "quarter": str(r.get("quarter", "")),
+            "eps": _safe_float(r.get("eps")),
+            "pe": _safe_float(r.get("pe")),
+            "rating": str(r.get("rating", "")),
+        } for _, r in df.head(limit).iterrows()]
+    return ts_or_none(_fetch)
+# 降级：§2 东财 reportapi / iwencai
+
+def ts_northbound_flow(trade_date: str | None = None) -> list[dict] | None:
+    def _fetch(pro):
+        td = (trade_date or time.strftime("%Y%m%d")).replace("-", "")
+        df = pro.moneyflow_hsgt(trade_date=td,
+            fields="trade_date,ggt_ss,ggt_sz,hgt,sgt,north_money,south_money")
+        if df is None or df.empty:
+            return []
+        return [{
+            "date": _fmt_date(r["trade_date"]),
+            "hgt": _safe_float(r.get("hgt")) / 1e8,
+            "sgt": _safe_float(r.get("sgt")) / 1e8,
+            "north_money": _safe_float(r.get("north_money")) / 1e8,
+        } for _, r in df.iterrows()]
+    return ts_or_none(_fetch)
+# 降级：§3.2 同花顺 hsgtApi
+
+def ts_stock_moneyflow(code: str, start_date: str, end_date: str) -> list[dict] | None:
+    def _fetch(pro):
+        df = pro.moneyflow(ts_code=to_ts_code(code),
+            start_date=start_date.replace("-", ""), end_date=end_date.replace("-", ""),
+            fields="trade_date,buy_sm_amount,sell_sm_amount,buy_md_amount,sell_md_amount,"
+                   "buy_lg_amount,sell_lg_amount,buy_elg_amount,sell_elg_amount,net_mf_amount")
+        if df is None or df.empty:
+            return []
+        rows = []
+        for _, r in df.sort_values("trade_date").iterrows():
+            rows.append({
+                "date": _fmt_date(r["trade_date"]),
+                "main_net": _safe_float(r.get("net_mf_amount")),
+                "small_net": _safe_float(r.get("buy_sm_amount")) - _safe_float(r.get("sell_sm_amount")),
+                "mid_net": _safe_float(r.get("buy_md_amount")) - _safe_float(r.get("sell_md_amount")),
+                "large_net": _safe_float(r.get("buy_lg_amount")) - _safe_float(r.get("sell_lg_amount")),
+                "super_net": _safe_float(r.get("buy_elg_amount")) - _safe_float(r.get("sell_elg_amount")),
+            })
+        return rows
+    return ts_or_none(_fetch)
+# 分钟级仍走 push2；降级日级：§4 push2his
+
+def ts_dragon_tiger(trade_date: str) -> list[dict] | None:
+    def _fetch(pro):
+        td = trade_date.replace("-", "")
+        df = pro.top_list(trade_date=td,
+            fields="trade_date,ts_code,name,close,pct_change,turnover_rate,amount,l_amount,net_amount,reason")
+        if df is None or df.empty:
+            return []
+        return [{
+            "code": str(r["ts_code"]).split(".")[0],
+            "name": str(r.get("name", "")),
+            "close": _safe_float(r.get("close")),
+            "change_pct": _safe_float(r.get("pct_change")),
+            "turnover_pct": _safe_float(r.get("turnover_rate")),
+            "net_buy": _safe_float(r.get("net_amount")),
+            "reason": str(r.get("reason", "")),
+        } for _, r in df.iterrows()]
+    return ts_or_none(_fetch)
+# 席位：pro.top_inst；降级：§3.5 / §3.9
+
+def ts_share_float(code: str, start_date: str, end_date: str) -> list[dict] | None:
+    def _fetch(pro):
+        df = pro.share_float(ts_code=to_ts_code(code),
+            start_date=start_date.replace("-", ""), end_date=end_date.replace("-", ""),
+            fields="ann_date,float_date,float_share,float_ratio,holder_name")
+        if df is None or df.empty:
+            return []
+        return [{
+            "ann_date": _fmt_date(r.get("ann_date", "")),
+            "float_date": _fmt_date(r.get("float_date", "")),
+            "float_share": _safe_float(r.get("float_share")),
+            "float_ratio": _safe_float(r.get("float_ratio")),
+            "holder": str(r.get("holder_name", "")),
+        } for _, r in df.iterrows()]
+    return ts_or_none(_fetch)
+# 降级：§3.6
+
+def ts_margin_detail(code: str, start_date: str, end_date: str) -> list[dict] | None:
+    def _fetch(pro):
+        df = pro.margin_detail(ts_code=to_ts_code(code),
+            start_date=start_date.replace("-", ""), end_date=end_date.replace("-", ""),
+            fields="trade_date,rzye,rzmre,rzche,rqye,rqmcl,rqchl,rzrqye")
+        if df is None or df.empty:
+            return []
+        return [{
+            "date": _fmt_date(r["trade_date"]),
+            "rzye": _safe_float(r.get("rzye")), "rzmre": _safe_float(r.get("rzmre")),
+            "rzche": _safe_float(r.get("rzche")), "rqye": _safe_float(r.get("rqye")),
+            "rqmcl": _safe_float(r.get("rqmcl")), "rqchl": _safe_float(r.get("rqchl")),
+            "rzrqye": _safe_float(r.get("rzrqye")),
+        } for _, r in df.sort_values("trade_date", ascending=False).iterrows()]
+    return ts_or_none(_fetch)
+# 降级：§4.1
+
+def ts_block_trade(code: str, start_date: str, end_date: str) -> list[dict] | None:
+    def _fetch(pro):
+        df = pro.block_trade(ts_code=to_ts_code(code),
+            start_date=start_date.replace("-", ""), end_date=end_date.replace("-", ""),
+            fields="trade_date,price,vol,amount,buyer,seller")
+        if df is None or df.empty:
+            return []
+        return [{
+            "date": _fmt_date(r["trade_date"]),
+            "price": _safe_float(r.get("price")), "vol": _safe_float(r.get("vol")),
+            "amount": _safe_float(r.get("amount")),
+            "buyer": str(r.get("buyer", "")), "seller": str(r.get("seller", "")),
+        } for _, r in df.iterrows()]
+    return ts_or_none(_fetch)
+# 降级：§4.2
+
+def ts_holder_num(code: str, limit: int = 10) -> list[dict] | None:
+    def _fetch(pro):
+        df = pro.stk_holdernumber(ts_code=to_ts_code(code), fields="end_date,holder_num")
+        if df is None or df.empty:
+            return []
+        df = df.sort_values("end_date", ascending=False).head(limit)
+        rows, prev = [], None
+        for _, r in df.iterrows():
+            n = int(_safe_float(r.get("holder_num")))
+            chg = None if prev is None else round((n / prev - 1) * 100, 2)
+            rows.append({"date": _fmt_date(r["end_date"]), "holder_num": n, "change_ratio": chg})
+            prev = n
+        return rows
+    return ts_or_none(_fetch)
+# 降级：§4.3
+
+def ts_dividend(code: str) -> list[dict] | None:
+    def _fetch(pro):
+        df = pro.dividend(ts_code=to_ts_code(code),
+            fields="end_date,ann_date,div_proc,stk_div,cash_div,cash_div_tax,record_date,ex_date")
+        if df is None or df.empty:
+            return []
+        return [{
+            "date": _fmt_date(r.get("ex_date") or r.get("ann_date", "")),
+            "bonus_rmb": _safe_float(r.get("cash_div")),
+            "bonus_ratio": _safe_float(r.get("stk_div")),
+            "plan": str(r.get("div_proc", "")),
+        } for _, r in df.sort_values("end_date", ascending=False).iterrows()]
+    return ts_or_none(_fetch)
+# 降级：§4.4
+
+def ts_financials(code: str, report_type: str = "income", period: str = "") -> list[dict] | None:
+    """report_type: income | balancesheet | cashflow"""
+    api = {"income": "income", "balancesheet": "balancesheet", "cashflow": "cashflow"}[report_type]
+    def _fetch(pro):
+        fn = getattr(pro, api)
+        kwargs = {"ts_code": to_ts_code(code), "fields": ""}
+        if period:
+            kwargs["period"] = period.replace("-", "")
+        df = fn(**kwargs)
+        if df is None or df.empty:
+            return []
+        return df.to_dict("records")
+    return ts_or_none(_fetch)
+# 降级：§6 新浪 / mootdx
+```
+
+#### 板块接口字段（§3.11 使用）
 
 | 接口 | 用途 | 字段映射 |
 |------|------|---------|
@@ -534,7 +845,18 @@ def tushare_available() -> bool:
 | `dc_index` | 板块领涨股 | `leading`→lead_stock，`leading_pct`→pct_change_stock |
 | `trade_cal` | 交易日历 | 取最近 N 个 `is_open=1` 日 |
 
-> **失效时：** 捕获 `RuntimeError` / API 异常 / 积分过期 → 改用 §3.10 **东财 push2his 降级**，不要无 token 时反复重试 Tushare。
+#### 积分与限速
+
+| 操作 | 量级 | 建议 |
+|------|------|------|
+| 板块 30 日回填 | ~60 次 | 有积分时第 1 天跑完（§3.11） |
+| 板块日常增量 | 0（东财） | 积分过期后仍可用 |
+| 个股历史 K / 资金流 | 1 次/标的 | 批量注意积分 |
+| 实时 / 分钟 | — | **不用 TS** |
+
+捕获 Tushare 异常 → **立即降级对应 §**，勿无 token 反复重试。
+
+> **失效时：** 板块历史改走 §3.11 东财 push2his；其它日级改走上表「降级章节」。
 
 ### mootdx 客户端（必读，规避 0.11.x BESTIP 空串 bug）
 
@@ -8005,25 +8327,29 @@ A: 能。SKILL.md 本质是 Markdown + 内嵌 Python 代码。Codex、OpenClaw �
 
 ## 安装说明
 
-```bash
-# 1. 创建 skill 目录
-mkdir -p ~/.claude/skills/a-stock-data
+### SelfAiStation / Hana
 
-# 2. 将本文件复制为 SKILL.md
+1. 父仓根目录维护 conda：`conda env update -f environment.yml --prune`（环境名 **`selfaistation`**）。  
+2. Hana：按栏目 `HANA-SETUP.md` 从工作区 `a-stock-data/` 安装本 Skill，**仅锦泽-投研**打开。  
+3. 取数：`conda run -n selfaistation python …`；可选 `TUSHARE_TOKEN`（`.env` / secrets）。  
+4. **不要**再创建或激活 conda 环境 `a-stock-data`。
+
+### 其它助手（Claude Code 等，独立安装）
+
+```bash
+# 1. 创建 skill 目录并复制本文件
+mkdir -p ~/.claude/skills/a-stock-data
 cp SKILL.md ~/.claude/skills/a-stock-data/SKILL.md
 
-# 3. 安装 Python 依赖
+# 2. 安装 Python 依赖（若未使用 selfaistation）
 pip install mootdx requests pandas stockstats numpy baostock xlrd openpyxl
-# 板块历史批量（可选，§3.11）
 pip install tinyshare --extra-index-url https://minidoc.pages.dev/simple/ -U
 
-# 4. (可选) 配置 iwencai API Key
+# 3. (可选) iwencai / Tushare
 export IWENCAI_API_KEY="your_key_here"
-
-# 5. (可选) 配置 Tushare / tinyshare — 板块 30 日批量回填
 export TUSHARE_TOKEN='你的授权码'
 
-# 6. 启动 Claude Code，说"查一下688017的估值"即可自动激活
+# 4. 启动助手，说「查一下688017的估值」即可激活
 ```
 
 ---
